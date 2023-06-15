@@ -21,7 +21,7 @@ var client = http.Client{
 //test
 
 func sendRequest(baseAddress string, responseSize int, client *http.Client) (*http.Response, error) {
-	req, err := http.NewRequest("GET", fmt.Sprintf("%s/api/v1/some-data", baseAddress), nil)
+	req, err := http.NewRequest("GET", fmt.Sprintf("%s/api/v1/some-data?key=team", baseAddress), nil)
 	if err != nil {
 		log.Printf("error creating request: %s", err)
 		return nil, err
