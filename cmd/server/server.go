@@ -109,7 +109,7 @@ func main() {
 		return
 	}
 
-	res, err := client.Post(fmt.Sprintf("%s/kentiki", dbUrl), "application/json", buffer)
+	res, err := client.Post(fmt.Sprintf("%s/team", dbUrl), "application/json", buffer)
 	if err != nil {
 		fmt.Println("Failed to send POST request:", err)
 		return
