@@ -72,7 +72,11 @@ func (s *IntegrationTestSuite) BenchmarkBalancer(b *testing.B) {
 	}
 
 	for i := 0; i < b.N; i++ {
-		_, err := client.Get(fmt.Sprintf("%s/api/v1/some-data", baseAddress))
-		assert.NoError(s.t, err)
+		resp, err := client.Get(fmt.Sprintf("%s/api/v1/some-data?key=team", baseAddress))
+		if err != nil {
+			log.Printf("error: %s", err)
+			b.FailNow()
+		}
+		assert.Equal(b, http.StatusOK, resp.StatusCode)
 	}
 }
