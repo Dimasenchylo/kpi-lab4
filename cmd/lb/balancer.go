@@ -14,6 +14,7 @@ import (
 	"github.com/Dimasenchylo/kpi-lab4/signal"
 )
 
+// no
 var (
 	port       = flag.Int("port", 8090, "load balancer port")
 	timeoutSec = flag.Int("timeout-sec", 3, "request timeout time in seconds")
