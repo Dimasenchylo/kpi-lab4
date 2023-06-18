@@ -128,8 +128,7 @@ func (b *Balancer) getServerIndexWithLowestLoad(serverLoad map[string]int64, ser
 	minLoad := int64(^uint64(0) >> 1)
 	var minLoadServer string
 
-	for _, server := range serversPool {
-		load := serverLoad[server]
+	for server, load := range serverLoad {
 		if load < minLoad {
 			minLoad = load
 			minLoadServer = server
@@ -149,8 +148,7 @@ func (b *Balancer) Start() {
 	b.healthChecker.StartHealthCheck()
 
 	frontend := httptools.CreateServer(*port, http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
-		index := b.getServerIndexWithLowestLoad(biteCount, b.healthChecker.GetHealthyServers())
-		log.Println(biteCount)
+		index := b.getServerIndexWithLowestLoad(b.healthChecker.GetBiteCount(), b.healthChecker.GetHealthyServers())
 		_ = b.forward(b.healthChecker.GetHealthyServers()[index], rw, r)
 	}))
 	log.Println("Starting load balancer...")
@@ -165,15 +163,19 @@ type HealthChecker struct {
 	healthyServers []string
 	checkInterval  time.Duration
 	healthyMu      sync.Mutex
+	biteCount      map[string]int64
 }
 
 func (hc *HealthChecker) StartHealthCheck() {
+	hc.biteCount = make(map[string]int64)
+
 	for i, server := range hc.serversPool {
 		server := server
 		i := i
 		go func() {
 			for range time.Tick(hc.checkInterval) {
 				isHealthy := hc.health(server)
+				hc.healthyMu.Lock()
 				if !isHealthy {
 					hc.serversPool[i] = ""
 				} else {
@@ -181,7 +183,7 @@ func (hc *HealthChecker) StartHealthCheck() {
 				}
 
 				hc.healthyServers = make([]string, 0)
-
+				hc.healthyMu.Unlock()
 				for _, value := range hc.serversPool {
 					if value != "" {
 						hc.healthyServers = append(hc.healthyServers, value)
@@ -198,4 +200,11 @@ func (hc *HealthChecker) GetHealthyServers() []string {
 	defer hc.healthyMu.Unlock()
 
 	return hc.healthyServers
+}
+
+func (hc *HealthChecker) GetBiteCount() map[string]int64 {
+	mu.Lock()
+	defer mu.Unlock()
+
+	return hc.biteCount
 }
