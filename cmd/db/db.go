@@ -14,18 +14,18 @@ import (
 
 var port = flag.Int("port", 8083, "server port")
 
-type Request struct {
+type Req struct {
 	Value string `json:"value"`
 }
 
-type Response struct {
+type Resp struct {
 	Key   string `json:"key"`
 	Value string `json:"value"`
 }
 
 func main() {
 	flag.Parse()
-
+	h := http.NewServeMux()
 	dir, err := ioutil.TempDir("", "temp-dir")
 	if err != nil {
 		log.Fatal(err)
@@ -35,30 +35,27 @@ func main() {
 		log.Fatal(err)
 	}
 	defer db.Close()
-
-	h := http.NewServeMux()
-
 	h.HandleFunc("/db/", func(rw http.ResponseWriter, req *http.Request) {
 		key := req.URL.Path[4:]
 
 		switch req.Method {
-		case http.MethodGet:
+		case "GET":
 			value, err := db.Get(key)
 			if err != nil {
 				rw.WriteHeader(http.StatusNotFound)
 				return
 			}
 
-			resp := Response{
+			response := Resp{
 				Key:   key,
 				Value: value,
 			}
 			rw.Header().Set("Content-Type", "application/json")
 			rw.WriteHeader(http.StatusOK)
-			_ = json.NewEncoder(rw).Encode(resp)
+			_ = json.NewEncoder(rw).Encode(response)
 
-		case http.MethodPost:
-			var body Request
+		case "POST":
+			var body Req
 			err := json.NewDecoder(req.Body).Decode(&body)
 			if err != nil {
 				rw.WriteHeader(http.StatusBadRequest)

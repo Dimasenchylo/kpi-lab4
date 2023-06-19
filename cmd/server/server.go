@@ -29,15 +29,20 @@ type Response struct {
 	Value string "json:\"value\""
 }
 
+type Req struct {
+	Value string `json:"value"`
+}
+
+type Resp struct {
+	Key   string `json:"key"`
+	Value string `json:"value"`
+}
+
 func main() {
-	flag.Parse()
-
+	h := new(http.ServeMux)
 	client := http.DefaultClient
-
-	mux := http.NewServeMux()
-
-	mux.HandleFunc("/health", func(rw http.ResponseWriter, r *http.Request) {
-		rw.Header().Set("Content-Type", "text/plain")
+	h.HandleFunc("/health", func(rw http.ResponseWriter, r *http.Request) {
+		rw.Header().Set("content-type", "text/plain")
 		if failConfig := os.Getenv(confHealthFailure); failConfig == "true" {
 			rw.WriteHeader(http.StatusInternalServerError)
 			_, _ = rw.Write([]byte("FAILURE"))
@@ -49,23 +54,23 @@ func main() {
 
 	report := make(Report)
 
-	mux.HandleFunc("/api/v1/some-data", func(rw http.ResponseWriter, r *http.Request) {
+	h.HandleFunc("/api/v1/some-data", func(rw http.ResponseWriter, r *http.Request) {
 		key := r.URL.Query().Get("key")
 		if key == "" {
 			rw.WriteHeader(http.StatusBadRequest)
 			return
 		}
 
-		resp, err := client.Get(fmt.Sprintf("%s/%s", dbUrl, key))
+		response, err := client.Get(fmt.Sprintf("http://db:8083/db/%s", key))
 		if err != nil {
 			rw.WriteHeader(http.StatusInternalServerError)
 			return
 		}
-		defer resp.Body.Close()
 
-		statusOK := resp.StatusCode >= 200 && resp.StatusCode < 300
-		if !statusOK {
-			rw.WriteHeader(resp.StatusCode)
+		statusOk := response.StatusCode >= 200 && response.StatusCode < 300
+
+		if !statusOk {
+			rw.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 		respDelayString := os.Getenv(confResponseDelaySec)
@@ -101,15 +106,10 @@ func main() {
 
 	server := httptools.CreateServer(*port, mux)
 	server.Start()
-	time.Sleep(5 * time.Second)
-	buffer := new(bytes.Buffer)
-	body := Request{Value: time.Now().Format(time.RFC3339)}
-	if err := json.NewEncoder(buffer).Encode(body); err != nil {
-		fmt.Println("Failed to encode request body:", err)
-		return
-	}
-
-	res, err := client.Post(fmt.Sprintf("%s/team", dbUrl), "application/json", buffer)
+	buff := new(bytes.Buffer)
+	body := Req{Value: time.Now().Format(time.RFC3339)}
+	json.NewEncoder(buff).Encode(body)
+	res, err := client.Post("http://db:8083/db/team", "application/json", buff)
 	if err != nil {
 		fmt.Println("Failed to send POST request:", err)
 		return
